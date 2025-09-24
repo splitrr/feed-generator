@@ -4,11 +4,13 @@ import {
   OutputSchema as AlgoOutput,
 } from '../lexicon/types/app/bsky/feed/getFeedSkeleton'
 import * as whatsAlf from './whats-alf'
+import * as sparseDaily from './sparse-daily-by-big-accounts'
 
 type AlgoHandler = (ctx: AppContext, params: QueryParams) => Promise<AlgoOutput>
 
 const algos: Record<string, AlgoHandler> = {
   [whatsAlf.shortname]: whatsAlf.handler,
+  [sparseDaily.shortname]: sparseDaily.handler,
 }
 
 export default algos
