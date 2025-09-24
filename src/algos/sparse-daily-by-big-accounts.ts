@@ -5,10 +5,12 @@ import { sql } from 'kysely'
 // max 15 chars
 export const shortname = 'big-sparse'
 
-// Feed: posts from authors with >500 followers who post at most once per day.
+// Feed: posts from authors with >minFollowers followers who posted no more than
+// 30 times in the last 30 days. Returns recent posts by those authors.
 export const handler = async (ctx: AppContext, params: QueryParams) => {
   const limit = params.limit
   const minFollowers = ctx.cfg.minFollowers
+  const thirtyDaysAgo = sql<string>`datetime('now', '-30 days')`
 
   // Subquery: authors with >500 followers
   const popularAuthors = ctx.db
@@ -17,26 +19,23 @@ export const handler = async (ctx: AppContext, params: QueryParams) => {
     .groupBy('subjectDid')
     .having(sql`count(*)`, '>', minFollowers)
 
-  // Subquery: posts where the author made at most 1 post in the day of the post
-  // We compute a per-author, per-day count and filter to rows where that count == 1
-  const perDayCounts = ctx.db
+  // Subquery: authors who made no more than 30 posts in the last 30 days
+  const monthCounts = ctx.db
     .selectFrom('post')
+    .where('createdAt', '>=', thirtyDaysAgo)
     .select([
       'author',
-      sql<string>`date(createdAt)`.as('day'),
-      sql<number>`count(*)`.as('numPosts'),
+      sql<number>`count(*)`.as('numPosts30d'),
     ])
     .groupBy('author')
-    .groupBy(sql`date(createdAt)`)
-    .having(sql`count(*)`, '=', 1)
+    .having(sql`count(*)`, '<=', 30)
 
   let qb = ctx.db
     .selectFrom('post as p')
-    .innerJoin(perDayCounts.as('pc'), (join) =>
-      join
-        .onRef('pc.author', '=', 'p.author')
-        .on(sql`pc.day = date(p.createdAt)`),
+    .innerJoin(monthCounts.as('mc'), (join) =>
+      join.onRef('mc.author', '=', 'p.author'),
     )
+    .where('p.createdAt', '>=', thirtyDaysAgo)
     .where('p.author', 'in', popularAuthors)
     .orderBy('p.indexedAt', 'desc')
     .orderBy('p.cid', 'desc')
