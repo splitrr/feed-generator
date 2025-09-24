@@ -36,16 +36,22 @@ export class FirehoseSubscription extends FirehoseSubscriptionBase {
     }
 
     const postsToDelete = ops.posts.deletes.map((del) => del.uri)
-    const postsToCreate = ops.posts.creates.map((create) => {
-      const record = create.record as PostRecord
-      return {
-        uri: create.uri,
-        cid: create.cid,
-        indexedAt: new Date().toISOString(),
-        author: create.author,
-        createdAt: record.createdAt,
-      }
-    })
+    const postsToCreate = ops.posts.creates
+      .map((create) => {
+        const record = create.record as PostRecord
+        // Skip replies to avoid threading; only index top-level posts
+        if ((record as any)?.reply) {
+          return undefined
+        }
+        return {
+          uri: create.uri,
+          cid: create.cid,
+          indexedAt: new Date().toISOString(),
+          author: create.author,
+          createdAt: record.createdAt,
+        }
+      })
+      .filter((v): v is NonNullable<typeof v> => Boolean(v))
 
     if (postsToDelete.length > 0) {
       await this.db

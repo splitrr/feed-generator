@@ -41,7 +41,7 @@ async function backfillAuthor(
   let inserted = 0
 
   while (true) {
-    const res = await agent.api.app.bsky.feed.getAuthorFeed({ actor: authorDid, limit: 100, cursor })
+    const res = await agent.api.app.bsky.feed.getAuthorFeed({ actor: authorDid, limit: 100, cursor, filter: 'posts_no_replies' as any })
     const feed = res.data.feed
     if (!feed?.length) break
 
