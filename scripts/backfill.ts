@@ -13,6 +13,7 @@ type BackfillConfig = {
   windowDays: number
   maxAuthors: number
   maxPostsPerAuthor: number
+  maxPostsInWindowFilter: number
 }
 
 const nowIso = () => new Date().toISOString()
@@ -29,16 +30,19 @@ async function getPopularAuthors(db: Database, minFollowers: number, limit: numb
   return rows.map((r: any) => r.authorDid as string)
 }
 
+type MinimalPost = { uri: string; cid: string; author: string; createdAt: string }
+
 async function backfillAuthor(
   agent: AtpAgent,
   db: Database,
   authorDid: string,
   windowDays: number,
-  maxPosts: number,
+  maxPostsInsertCap: number,
+  maxPostsInWindowFilter: number,
 ): Promise<number> {
   const cutoffMs = Date.now() - windowDays * 24 * 60 * 60 * 1000
   let cursor: string | undefined = undefined
-  let inserted = 0
+  const collected: MinimalPost[] = []
 
   while (true) {
     const res = await agent.api.app.bsky.feed.getAuthorFeed({ actor: authorDid, limit: 100, cursor, filter: 'posts_no_replies' as any })
@@ -57,25 +61,34 @@ async function backfillAuthor(
       const createdMs = Date.parse(createdAt)
       if (isNaN(createdMs)) continue
       if (createdMs < cutoffMs) {
-        // We've reached outside the window; stop for this author
-        return inserted
+        cursor = undefined
+        break
       }
-
-      try {
-        await db
-          .insertInto('post')
-          .values({ uri, cid, author, createdAt, indexedAt: nowIso() })
-          .onConflict((oc) => oc.doNothing())
-          .execute()
-        inserted++
-        if (inserted >= maxPosts) return inserted
-      } catch {
-        // ignore row-level errors
-      }
+      collected.push({ uri, cid, author, createdAt })
+      if (collected.length >= maxPostsInsertCap) break
     }
 
     cursor = res.data.cursor
-    if (!cursor) break
+    if (!cursor || collected.length >= maxPostsInsertCap) break
+  }
+
+  // Only insert if author has <= maxPostsInWindowFilter in the window
+  if (collected.length > maxPostsInWindowFilter) {
+    return 0
+  }
+
+  let inserted = 0
+  for (const p of collected) {
+    try {
+      await db
+        .insertInto('post')
+        .values({ uri: p.uri, cid: p.cid, author: p.author, createdAt: p.createdAt, indexedAt: nowIso() })
+        .onConflict((oc) => oc.doNothing())
+        .execute()
+      inserted++
+    } catch {
+      // ignore row-level errors
+    }
   }
 
   return inserted
@@ -89,6 +102,10 @@ async function run() {
     windowDays: parseInt(process.env.FEEDGEN_MAX_POSTS_WINDOW_DAYS || '30', 10),
     maxAuthors: parseInt(process.env.FEEDGEN_BACKFILL_MAX_AUTHORS || '200', 10),
     maxPostsPerAuthor: parseInt(process.env.FEEDGEN_BACKFILL_MAX_POSTS_PER_AUTHOR || '200', 10),
+    maxPostsInWindowFilter: parseInt(
+      process.env.FEEDGEN_BACKFILL_MAX_POSTS_IN_WINDOW || process.env.FEEDGEN_MAX_POSTS_IN_WINDOW || '90',
+      10,
+    ),
   }
 
   const db = createDb(cfg.sqliteLocation)
@@ -106,7 +123,14 @@ async function run() {
   let total = 0
   for (const [i, did] of authors.entries()) {
     try {
-      const n = await backfillAuthor(agent, db, did, cfg.windowDays, cfg.maxPostsPerAuthor)
+      const n = await backfillAuthor(
+        agent,
+        db,
+        did,
+        cfg.windowDays,
+        cfg.maxPostsPerAuthor,
+        cfg.maxPostsInWindowFilter,
+      )
       total += n
       if ((i + 1) % 10 === 0) console.log(`Processed ${i + 1}/${authors.length} authors; inserted so far: ${total}`)
     } catch (err) {
