@@ -20,6 +20,8 @@ const run = async () => {
     hostname,
     serviceDid,
     minFollowers: maybeInt(process.env.FEEDGEN_MIN_FOLLOWERS) ?? 500,
+    maxPostsWindowDays: maybeInt(process.env.FEEDGEN_MAX_POSTS_WINDOW_DAYS) ?? 30,
+    maxPostsInWindow: maybeInt(process.env.FEEDGEN_MAX_POSTS_IN_WINDOW) ?? 90,
   })
   await server.start()
   console.log(

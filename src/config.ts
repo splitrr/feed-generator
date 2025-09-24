@@ -17,4 +17,6 @@ export type Config = {
   publisherDid: string
   subscriptionReconnectDelay: number
   minFollowers: number
+  maxPostsWindowDays: number
+  maxPostsInWindow: number
 }
