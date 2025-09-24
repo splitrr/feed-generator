@@ -3,6 +3,8 @@ import {
   isCommit,
 } from './lexicon/types/com/atproto/sync/subscribeRepos'
 import { FirehoseSubscriptionBase, getOpsByType } from './util/subscription'
+import { Record as PostRecord } from './lexicon/types/app/bsky/feed/post'
+import { Record as FollowRecord } from './lexicon/types/app/bsky/graph/follow'
 
 export class FirehoseSubscription extends FirehoseSubscriptionBase {
   async handleEvent(evt: RepoEvent) {
@@ -10,27 +12,40 @@ export class FirehoseSubscription extends FirehoseSubscriptionBase {
 
     const ops = await getOpsByType(evt)
 
-    // This logs the text of every post off the firehose.
-    // Just for fun :)
-    // Delete before actually using
-    for (const post of ops.posts.creates) {
-      console.log(post.record.text)
+    // Index follows
+    const followsToDelete = ops.follows.deletes.map((del) => del.uri)
+    const followsToCreate = ops.follows.creates.map((create) => {
+      const record = create.record as FollowRecord
+      return {
+        uri: create.uri,
+        followerDid: create.author,
+        subjectDid: record.subject,
+        createdAt: record.createdAt,
+      }
+    })
+
+    if (followsToDelete.length > 0) {
+      await this.db.deleteFrom('follow').where('uri', 'in', followsToDelete).execute()
+    }
+    if (followsToCreate.length > 0) {
+      await this.db
+        .insertInto('follow')
+        .values(followsToCreate)
+        .onConflict((oc) => oc.doNothing())
+        .execute()
     }
 
     const postsToDelete = ops.posts.deletes.map((del) => del.uri)
-    const postsToCreate = ops.posts.creates
-      .filter((create) => {
-        // only alf-related posts
-        return create.record.text.toLowerCase().includes('alf')
-      })
-      .map((create) => {
-        // map alf-related posts to a db row
-        return {
-          uri: create.uri,
-          cid: create.cid,
-          indexedAt: new Date().toISOString(),
-        }
-      })
+    const postsToCreate = ops.posts.creates.map((create) => {
+      const record = create.record as PostRecord
+      return {
+        uri: create.uri,
+        cid: create.cid,
+        indexedAt: new Date().toISOString(),
+        author: create.author,
+        createdAt: record.createdAt,
+      }
+    })
 
     if (postsToDelete.length > 0) {
       await this.db
