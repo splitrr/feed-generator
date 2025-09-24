@@ -15,12 +15,11 @@ export const handler = async (ctx: AppContext, params: QueryParams) => {
   const maxPosts = ctx.cfg.maxPostsInWindow
   const windowAgo = sql<string>`datetime('now', '-' || ${days} || ' days')`
 
-  // Subquery: authors with >500 followers
+  // Subquery: authors with followers >= minFollowers from author_stats
   const popularAuthors = ctx.db
-    .selectFrom('follow')
-    .select((eb) => eb.ref('subjectDid').as('authorDid'))
-    .groupBy('subjectDid')
-    .having(sql`count(*)`, '>', minFollowers)
+    .selectFrom('author_stats')
+    .select((eb) => eb.ref('did').as('authorDid'))
+    .where('followers', '>=', minFollowers)
 
   // Subquery: authors who made no more than maxPosts posts in the window
   const monthCounts = ctx.db
