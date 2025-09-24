@@ -32,11 +32,21 @@ migrations['001'] = {
       .addColumn('subjectDid', 'varchar', (col) => col.notNull())
       .addColumn('createdAt', 'varchar', (col) => col.notNull())
       .execute()
+
+    // author_stats table for follower count backfill (created if not exists)
+    await db.schema
+      .createTable('author_stats')
+      .ifNotExists()
+      .addColumn('did', 'varchar', (col) => col.primaryKey())
+      .addColumn('followers', 'integer', (col) => col.notNull().defaultTo(0))
+      .addColumn('updatedAt', 'varchar', (col) => col.notNull())
+      .execute()
   },
   async down(db: Kysely<unknown>) {
     await db.schema.dropTable('post').execute()
     await db.schema.dropTable('sub_state').execute()
     await db.schema.dropTable('follow').execute()
+    await db.schema.dropTable('author_stats').execute()
   },
 }
 
