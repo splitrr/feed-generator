@@ -50,5 +50,21 @@ migrations['001'] = {
   },
 }
 
+// Create author_stats for existing databases
+migrations['002'] = {
+  async up(db: Kysely<unknown>) {
+    await db.schema
+      .createTable('author_stats')
+      .ifNotExists()
+      .addColumn('did', 'varchar', (col) => col.primaryKey())
+      .addColumn('followers', 'integer', (col) => col.notNull().defaultTo(0))
+      .addColumn('updatedAt', 'varchar', (col) => col.notNull())
+      .execute()
+  },
+  async down(db: Kysely<unknown>) {
+    await db.schema.dropTable('author_stats').execute()
+  },
+}
+
 // Backfill changes for existing databases
 // No 002 migration required for fresh local dev; 001 creates needed schema.
