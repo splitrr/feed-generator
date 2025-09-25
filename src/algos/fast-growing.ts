@@ -13,26 +13,20 @@ export const handler = async (ctx: AppContext, params: QueryParams) => {
   const lookbackDays = ctx.cfg.growthLookbackDays
   const windowAgo = sql<string>`datetime('now', '-' || ${lookbackDays} || ' days')`
 
-  // Compute growth per author from history: latest - earliest in window
-  const growth = ctx.db
-    .selectFrom('author_stats_history as h1')
-    .innerJoin('author_stats_history as h0', (join) =>
-      join
-        .onRef('h0.did', '=', 'h1.did')
-        .on(sql`h0.recordedAt <= ${windowAgo}`),
-    )
-    .select([
-      'h1.did as did',
-      sql<number>`max(h1.followers) - min(h0.followers)`.as('growth'),
-    ])
-    .groupBy('h1.did')
-    .having(sql`max(h1.followers) - min(h0.followers)`, '>=', minIncrease)
+  // Authors whose follower growth within the window meets threshold
+  // growth = max(followers) - min(followers) over the lookback window
+  const growthAuthorDids = ctx.db
+    .selectFrom('author_stats_history as h')
+    .where('h.recordedAt', '>=', windowAgo)
+    .groupBy('h.did')
+    .having(sql`max(h.followers) - min(h.followers)`, '>=', minIncrease)
+    .select('h.did')
 
   // Recent posts from growing authors
   const rows = await ctx.db
     .selectFrom('post as p')
     .where('p.createdAt', '>=', windowAgo)
-    .where('p.author', 'in', growth)
+    .where('p.author', 'in', growthAuthorDids)
     .orderBy('p.indexedAt', 'desc')
     .orderBy('p.cid', 'desc')
     .select(['p.uri as uri', 'p.indexedAt as indexedAt', 'p.cid as cid'])
