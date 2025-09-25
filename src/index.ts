@@ -22,6 +22,9 @@ const run = async () => {
     minFollowers: maybeInt(process.env.FEEDGEN_MIN_FOLLOWERS) ?? 500,
     maxPostsWindowDays: maybeInt(process.env.FEEDGEN_MAX_POSTS_WINDOW_DAYS) ?? 30,
     maxPostsInWindow: maybeInt(process.env.FEEDGEN_MAX_POSTS_IN_WINDOW) ?? 90,
+    growthMinDailyIncrease:
+      maybeInt(process.env.FEEDGEN_GROWTH_MIN_DAILY_INCREASE) ?? 100,
+    growthLookbackDays: maybeInt(process.env.FEEDGEN_GROWTH_LOOKBACK_DAYS) ?? 1,
   })
   await server.start()
   console.log(

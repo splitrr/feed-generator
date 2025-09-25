@@ -1,6 +1,7 @@
 import dotenv from 'dotenv'
 import { AtpAgent } from '@atproto/api'
 import { createDb, migrateToLatest } from '../src/db'
+import { sql } from 'kysely'
 
 // Backfill follower counts into author_stats using the public API.
 // This lets you filter by FEEDGEN_MIN_FOLLOWERS accurately immediately.
@@ -12,12 +13,15 @@ async function run() {
 
   const agent = new AtpAgent({ service: 'https://public.api.bsky.app' })
 
-  // Get unique authors seen in posts table to prioritize
+  // Choose stalest authors first (those missing history/updatedAt or oldest updatedAt)
+  const maxAuthors = parseInt(process.env.FEEDGEN_BACKFILL_FOLLOWERS_MAX_AUTHORS || '5000', 10)
   const authors = await db
-    .selectFrom('post')
-    .select('author')
-    .groupBy('author')
-    .limit(parseInt(process.env.FEEDGEN_BACKFILL_FOLLOWERS_MAX_AUTHORS || '5000', 10))
+    .selectFrom('post as p')
+    .leftJoin('author_stats as s', 's.did', 'p.author')
+    .select([sql`p.author`.as('author'), 's.updatedAt'])
+    .groupBy(['p.author', 's.updatedAt'])
+    .orderBy(sql`COALESCE(s.updatedAt, '1970-01-01T00:00:00.000Z')`, 'asc')
+    .limit(maxAuthors)
     .execute()
 
   const dids = authors.map((a: any) => a.author as string).filter(Boolean)
@@ -40,6 +44,11 @@ async function run() {
           .insertInto('author_stats')
           .values({ did, followers, updatedAt: new Date().toISOString() })
           .onConflict((oc) => oc.column('did').doUpdateSet({ followers, updatedAt: new Date().toISOString() }))
+          .execute()
+        // snapshot history for growth feeds
+        await db
+          .insertInto('author_stats_history')
+          .values({ did, followers, recordedAt: new Date().toISOString() })
           .execute()
         updated++
       }

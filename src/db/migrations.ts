@@ -66,5 +66,30 @@ migrations['002'] = {
   },
 }
 
+// Follower history snapshots for growth-based feeds
+migrations['003'] = {
+  async up(db: Kysely<unknown>) {
+    await db.schema
+      .createTable('author_stats_history')
+      .ifNotExists()
+      .addColumn('did', 'varchar', (col) => col.notNull())
+      .addColumn('followers', 'integer', (col) => col.notNull())
+      .addColumn('recordedAt', 'varchar', (col) => col.notNull())
+      .execute()
+
+    // Helpful indexes
+    await db.schema
+      .createIndex('author_stats_history_did_recordedAt_idx')
+      .ifNotExists()
+      .on('author_stats_history')
+      .columns(['did', 'recordedAt'])
+      .execute()
+  },
+  async down(db: Kysely<unknown>) {
+    await db.schema.dropIndex('author_stats_history_did_recordedAt_idx').ifExists().execute()
+    await db.schema.dropTable('author_stats_history').ifExists().execute()
+  },
+}
+
 // Backfill changes for existing databases
 // No 002 migration required for fresh local dev; 001 creates needed schema.

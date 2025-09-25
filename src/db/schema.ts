@@ -3,6 +3,7 @@ export type DatabaseSchema = {
   sub_state: SubState
   follow: Follow
   author_stats: AuthorStats
+  author_stats_history: AuthorStatsHistory
 }
 
 export type Post = {
@@ -29,4 +30,10 @@ export type AuthorStats = {
   did: string
   followers: number
   updatedAt: string
+}
+
+export type AuthorStatsHistory = {
+  did: string
+  followers: number
+  recordedAt: string
 }

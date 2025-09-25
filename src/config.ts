@@ -19,4 +19,6 @@ export type Config = {
   minFollowers: number
   maxPostsWindowDays: number
   maxPostsInWindow: number
+  growthMinDailyIncrease: number
+  growthLookbackDays: number
 }
