@@ -50,6 +50,11 @@ async function backfillAuthor(
     if (!feed?.length) break
 
     for (const item of feed) {
+      // Exclude reposts: items with reasonRepost
+      const reason = (item as any)?.reason
+      if (reason && reason.$type === 'app.bsky.feed.defs#reasonRepost') {
+        continue
+      }
       const post = item.post
       // Ensure required fields exist
       const uri = post?.uri

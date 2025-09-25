@@ -134,3 +134,8 @@ dist
 *.iml
 data.sqlite
 *.sqlite
+
+#Backups
+/Users/AnthonyWest/repos/BlueSky/Feeds/feed-generator/Data Backups
+.vscode/settings.json
+src/-- SQLite.sql
