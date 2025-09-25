@@ -57,6 +57,25 @@ After successfully running the script, you should be able to see your feed from 
 
 Install dependencies with `npm install` and then run the server with `npm run start`. This will start the server on port 3000, or what's defined in `.env`. You can then watch the firehose output in the console and access the output of the `big-sparse` feed at [http://localhost:3000/xrpc/app.bsky.feed.getFeedSkeleton?feed=at://did:example:alice/app.bsky.feed.generator/big-sparse](http://localhost:3000/xrpc/app.bsky.feed.getFeedSkeleton?feed=at://did:example:alice/app.bsky.feed.generator/big-sparse).
 
+### Schedule daily follower backfill (cron)
+
+To keep `author_stats` current, schedule the followers backfill script daily:
+
+1. Ensure your `.env` points `FEEDGEN_SQLITE_LOCATION` at the DB you want to update.
+2. Install the example crontab (adjust paths if deploying to a server):
+
+```bash
+crontab scripts/crontab.example
+```
+
+This will run the wrapper script at 03:00 daily:
+
+```bash
+./scripts/cron-backfill-followers.sh
+```
+
+Logs are appended to `/var/log/feedgen-followers.log` in the example. Edit `scripts/crontab.example` to change schedule, log path, or repo path.
+
 ## Some Details
 
 ### Skeleton Metadata

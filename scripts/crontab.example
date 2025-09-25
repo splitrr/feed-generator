@@ -1,0 +1,7 @@
+# Install with: crontab /path/to/repo/scripts/crontab.example
+# Logs go to syslog unless redirected. Adjust paths as needed.
+
+# Run followers backfill daily at 03:00, append logs to /var/log/feedgen-followers.log
+0 3 * * * /usr/bin/env bash -lc 'cd "/Users/AnthonyWest/repos/BlueSky/Feeds/feed-generator" && ./scripts/cron-backfill-followers.sh' >> /var/log/feedgen-followers.log 2>&1
+
+
