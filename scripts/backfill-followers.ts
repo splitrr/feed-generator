@@ -14,7 +14,14 @@ async function run() {
   const agent = new AtpAgent({ service: 'https://public.api.bsky.app' })
 
   // Choose stalest authors first (those missing history/updatedAt or oldest updatedAt)
-  const maxAuthors = parseInt(process.env.FEEDGEN_BACKFILL_FOLLOWERS_MAX_AUTHORS || '5000', 10)
+  const trickle = (process.env.FEEDGEN_BACKFILL_FOLLOWERS_TRICKLE || '').toLowerCase() === 'true'
+  const maxAuthors = trickle
+    ? Number.MAX_SAFE_INTEGER
+    : parseInt(process.env.FEEDGEN_BACKFILL_FOLLOWERS_MAX_AUTHORS || '5000', 10)
+  const sleepMs = parseInt(process.env.FEEDGEN_BACKFILL_FOLLOWERS_SLEEP_MS || '0', 10)
+  const maxRunMinutes = parseInt(process.env.FEEDGEN_BACKFILL_FOLLOWERS_MAX_RUN_MINUTES || '0', 10)
+  const timeBudgetMs = maxRunMinutes > 0 ? maxRunMinutes * 60 * 1000 : 0
+  const startedAt = Date.now()
   const authors = await db
     .selectFrom('post as p')
     .leftJoin('author_stats as s', 's.did', 'p.author')
@@ -54,6 +61,13 @@ async function run() {
       }
     } catch (err) {
       console.warn('Batch failed:', (err as Error).message)
+    }
+    if (sleepMs > 0) {
+      await new Promise((r) => setTimeout(r, sleepMs))
+    }
+    if (timeBudgetMs > 0 && Date.now() - startedAt >= timeBudgetMs) {
+      console.log('Time budget reached; stopping early to trickle updates.')
+      break
     }
     if ((i / chunk) % 20 === 0) {
       console.log(`Processed ${Math.min(i + chunk, dids.length)}/${dids.length}`)
