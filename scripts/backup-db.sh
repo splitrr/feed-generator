@@ -16,7 +16,7 @@ if [ -f "$REPO_DIR/.env" ]; then
 fi
 
 # Optional: fixed output name via env BACKUP_FIXED_NAME or flag --output <name>
-OUTPUT_NAME="${BACKUP_FIXED_NAME:-Data.sqlite-backup-latest}"
+OUTPUT_NAME="${BACKUP_FIXED_NAME:-Data.sqlite-backup-latest.sqlite}"
 if [[ "${1:-}" == "--output" && -n "${2:-}" ]]; then
   OUTPUT_NAME="$2"
   shift 2

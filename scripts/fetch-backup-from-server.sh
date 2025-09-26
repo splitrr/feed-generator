@@ -4,6 +4,7 @@ set -euo pipefail
 # Fetch a DB backup from the server into this repo's Data Backups directory.
 #
 # Usage:
+#   ./scripts/fetch-backup-from-server.sh                      # defaults to Data.sqlite-backup-latest on default host
 #   ./scripts/fetch-backup-from-server.sh user@host backup-file.sqlite
 #   ./scripts/fetch-backup-from-server.sh "feedgen-backup-20250101-120000.sqlite"   # uses hardcoded default host/key
 #
@@ -21,7 +22,7 @@ DEFAULT_HOST="azureuser@bskydom.uksouth.cloudapp.azure.com"
 SSH_KEY_DEFAULT="${SSH_KEY:-$HOME/.ssh/skyfeedkey}"
 REMOTE_DIR="$DEFAULT_REMOTE_DIR"
 DEST_DIR="$DEFAULT_DEST_DIR"
-DEST_NAME="Data.sqlite-backup-latest"
+DEST_NAME="Data.sqlite-backup-latest.sqlite"
 
 # Parse flags
 while [[ $# -gt 0 ]]; do
@@ -40,7 +41,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ $# -eq 1 ]]; then
+if [[ $# -eq 0 ]]; then
+  HOST="$DEFAULT_HOST"
+  BACKUP_NAME="Data.sqlite-backup-latest.sqlite"
+elif [[ $# -eq 1 ]]; then
   HOST="$DEFAULT_HOST"
   BACKUP_NAME="$1"
 elif [[ $# -ge 2 ]]; then
