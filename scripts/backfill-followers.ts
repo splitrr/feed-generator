@@ -22,6 +22,7 @@ async function run() {
   const maxRunMinutes = parseInt(process.env.FEEDGEN_BACKFILL_FOLLOWERS_MAX_RUN_MINUTES || '0', 10)
   const timeBudgetMs = maxRunMinutes > 0 ? maxRunMinutes * 60 * 1000 : 0
   const startedAt = Date.now()
+  const disableHistory = (process.env.FEEDGEN_DISABLE_GROWTH_SNAPSHOT || '').toLowerCase() === 'true'
   const authors = await db
     .selectFrom('post as p')
     .leftJoin('author_stats as s', 's.did', 'p.author')
@@ -52,11 +53,13 @@ async function run() {
           .values({ did, followers, updatedAt: new Date().toISOString() })
           .onConflict((oc) => oc.column('did').doUpdateSet({ followers, updatedAt: new Date().toISOString() }))
           .execute()
-        // snapshot history for growth feeds
-        await db
-          .insertInto('author_stats_history')
-          .values({ did, followers, recordedAt: new Date().toISOString() })
-          .execute()
+        // snapshot history for growth feeds (optional)
+        if (!disableHistory) {
+          await db
+            .insertInto('author_stats_history')
+            .values({ did, followers, recordedAt: new Date().toISOString() })
+            .execute()
+        }
         updated++
       }
     } catch (err) {
