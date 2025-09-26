@@ -91,5 +91,38 @@ migrations['003'] = {
   },
 }
 
+// Likes persistence for future ranking/filters
+migrations['004'] = {
+  async up(db: Kysely<unknown>) {
+    await db.schema
+      .createTable('like')
+      .ifNotExists()
+      .addColumn('uri', 'varchar', (col) => col.primaryKey())
+      .addColumn('likerDid', 'varchar', (col) => col.notNull())
+      .addColumn('subjectUri', 'varchar', (col) => col.notNull())
+      .addColumn('createdAt', 'varchar', (col) => col.notNull())
+      .execute()
+
+    await db.schema
+      .createIndex('like_subjectUri_idx')
+      .ifNotExists()
+      .on('like')
+      .column('subjectUri')
+      .execute()
+
+    await db.schema
+      .createIndex('like_createdAt_idx')
+      .ifNotExists()
+      .on('like')
+      .column('createdAt')
+      .execute()
+  },
+  async down(db: Kysely<unknown>) {
+    await db.schema.dropIndex('like_createdAt_idx').ifExists().execute()
+    await db.schema.dropIndex('like_subjectUri_idx').ifExists().execute()
+    await db.schema.dropTable('like').ifExists().execute()
+  },
+}
+
 // Backfill changes for existing databases
 // No 002 migration required for fresh local dev; 001 creates needed schema.

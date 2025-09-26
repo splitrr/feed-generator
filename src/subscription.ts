@@ -66,5 +66,28 @@ export class FirehoseSubscription extends FirehoseSubscriptionBase {
         .onConflict((oc) => oc.doNothing())
         .execute()
     }
+
+    // Index likes
+    const likesToDelete = ops.likes.deletes.map((del) => del.uri)
+    const likesToCreate = ops.likes.creates.map((create) => {
+      const record = create.record as LikeRecord
+      return {
+        uri: create.uri,
+        likerDid: create.author,
+        subjectUri: record.subject?.uri as string,
+        createdAt: (record as any)?.createdAt as string,
+      }
+    }).filter((v) => v.subjectUri && v.createdAt)
+
+    if (likesToDelete.length > 0) {
+      await this.db.deleteFrom('like').where('uri', 'in', likesToDelete).execute()
+    }
+    if (likesToCreate.length > 0) {
+      await this.db
+        .insertInto('like')
+        .values(likesToCreate)
+        .onConflict((oc) => oc.doNothing())
+        .execute()
+    }
   }
 }

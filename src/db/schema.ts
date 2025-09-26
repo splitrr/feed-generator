@@ -4,6 +4,7 @@ export type DatabaseSchema = {
   follow: Follow
   author_stats: AuthorStats
   author_stats_history: AuthorStatsHistory
+  like: Like
 }
 
 export type Post = {
@@ -36,4 +37,11 @@ export type AuthorStatsHistory = {
   did: string
   followers: number
   recordedAt: string
+}
+
+export type Like = {
+  uri: string
+  likerDid: string
+  subjectUri: string
+  createdAt: string
 }
