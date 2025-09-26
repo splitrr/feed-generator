@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# TO run on Linux use "bash backup-db.sh"
+
 # Resolve repo root (this script lives in scripts/)
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd -P)"
 BACKUP_DIR="$REPO_DIR/Data Backups"
@@ -11,6 +13,13 @@ if [ -f "$REPO_DIR/.env" ]; then
   # shellcheck disable=SC1091
   source "$REPO_DIR/.env"
   set +a
+fi
+
+# Optional: fixed output name via env BACKUP_FIXED_NAME or flag --output <name>
+OUTPUT_NAME="${BACKUP_FIXED_NAME:-Data.sqlite-backup-latest}"
+if [[ "${1:-}" == "--output" && -n "${2:-}" ]]; then
+  OUTPUT_NAME="$2"
+  shift 2
 fi
 
 # Determine source DB
@@ -39,10 +48,14 @@ fi
 
 mkdir -p "$BACKUP_DIR"
 ts="$(date +%Y%m%d-%H%M%S)"
-DEST_DB="$BACKUP_DIR/feedgen-backup-$ts.sqlite"
+if [ -n "$OUTPUT_NAME" ]; then
+  DEST_DB="$BACKUP_DIR/$OUTPUT_NAME"
+else
+  DEST_DB="$BACKUP_DIR/feedgen-backup-$ts.sqlite"
+fi
 
 echo "Backing up from: $SRC_DB"
-echo "           to:   $DEST_DB"
+echo "           to:   $DEST_DB"${OUTPUT_NAME:+" (will overwrite)"}
 
 # Prefer using sqlite3 online backup if available; fall back to cp
 if command -v sqlite3 >/dev/null 2>&1; then
