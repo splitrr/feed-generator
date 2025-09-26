@@ -21,7 +21,6 @@ fi
 CANDIDATES+=(
   "$REPO_DIR/data.sqlite"
   "/home/azureuser/feed-generator/data.sqlite"
-  "/home/azureuser/feed-generator/data.slite" # common typo path
 )
 
 SRC_DB=""
