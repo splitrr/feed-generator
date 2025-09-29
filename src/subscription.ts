@@ -5,6 +5,7 @@ import {
 import { FirehoseSubscriptionBase, getOpsByType } from './util/subscription'
 import { Record as PostRecord } from './lexicon/types/app/bsky/feed/post'
 import { Record as FollowRecord } from './lexicon/types/app/bsky/graph/follow'
+import { Record as LikeRecord } from './lexicon/types/app/bsky/feed/like'
 
 export class FirehoseSubscription extends FirehoseSubscriptionBase {
   async handleEvent(evt: RepoEvent) {

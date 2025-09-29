@@ -12,7 +12,10 @@
     "start": "ts-node src/index.ts",
     "build": "tsc",
     "backfill": "ts-node scripts/backfill.ts",
-    "backfill:followers": "ts-node scripts/backfill-followers.ts"
+    "backfill:followers": "ts-node scripts/backfill-followers.ts",
+    "cleanup:fast-growing": "ts-node scripts/cleanup-fast-growing.ts"
+    ,
+    "migrate": "ts-node scripts/migrate.ts"
   },
   "dependencies": {
     "@atproto/api": "^0.13.28",

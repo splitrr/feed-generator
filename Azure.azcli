@@ -1,0 +1,1 @@
+az resource list --resource-type Microsoft.Web/sites
