@@ -12,15 +12,17 @@ export const handler = async (ctx: AppContext, params: QueryParams) => {
   const minIncrease = ctx.cfg.growthMinDailyIncrease
   const lookbackDays = ctx.cfg.growthLookbackDays
   const windowAgo = sql<string>`datetime('now', '-' || ${lookbackDays} || ' days')`
+  const windowStartDay = sql<string>`date(${windowAgo})`
 
   // Authors whose follower growth within the window meets threshold
-  // growth = max(followers) - min(followers) over the lookback window
+  // Use daily aggregates to reduce row scans
+  // growth = max(maxFollowers) - min(minFollowers) over lookback window days
   const growthAuthorDids = ctx.db
-    .selectFrom('author_stats_history as h')
-    .where('h.recordedAt', '>=', windowAgo)
-    .groupBy('h.did')
-    .having(sql`max(h.followers) - min(h.followers)`, '>=', minIncrease)
-    .select('h.did')
+    .selectFrom('author_stats_daily as d')
+    .where('d.day', '>=', windowStartDay)
+    .groupBy('d.did')
+    .having(sql`max(d.maxFollowers) - min(d.minFollowers)`, '>=', minIncrease)
+    .select('d.did')
 
   // Recent posts from growing authors
   const rows = await ctx.db

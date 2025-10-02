@@ -12,6 +12,8 @@ async function run() {
   await migrateToLatest(db)
 
   const agent = new AtpAgent({ service: 'https://public.api.bsky.app' })
+  const disableHistory = (process.env.FEEDGEN_DISABLE_GROWTH_SNAPSHOT || '').toLowerCase() === 'true'
+  const enableDaily = (process.env.FEEDGEN_ENABLE_DAILY_AGGREGATION || 'true').toLowerCase() === 'true'
 
   // Choose stalest authors first (those missing history/updatedAt or oldest updatedAt)
   const trickle = (process.env.FEEDGEN_BACKFILL_FOLLOWERS_TRICKLE || '').toLowerCase() === 'true'
@@ -22,7 +24,7 @@ async function run() {
   const maxRunMinutes = parseInt(process.env.FEEDGEN_BACKFILL_FOLLOWERS_MAX_RUN_MINUTES || '0', 10)
   const timeBudgetMs = maxRunMinutes > 0 ? maxRunMinutes * 60 * 1000 : 0
   const startedAt = Date.now()
-  const disableHistory = (process.env.FEEDGEN_DISABLE_GROWTH_SNAPSHOT || '').toLowerCase() === 'true'
+  // prefer stale authors first
   const authors = await db
     .selectFrom('post as p')
     .leftJoin('author_stats as s', 's.did', 'p.author')
@@ -59,6 +61,34 @@ async function run() {
             .insertInto('author_stats_history')
             .values({ did, followers, recordedAt: new Date().toISOString() })
             .execute()
+        }
+        // upsert daily aggregate to reduce storage footprint
+        if (enableDaily) {
+          const day = new Date().toISOString().slice(0, 10)
+          // emulate upsert for min/max using a single statement where possible
+          // Kysely doesn't support ON CONFLICT for multiple sets w/ expressions easily across all dialects,
+          // so do read-modify-write guarded by unique index at the SQL level.
+          const existing = await db
+            .selectFrom('author_stats_daily')
+            .select(['minFollowers', 'maxFollowers'])
+            .where('did', '=', did)
+            .where('day', '=', day)
+            .executeTakeFirst()
+          if (!existing) {
+            await db
+              .insertInto('author_stats_daily')
+              .values({ did, day, minFollowers: followers, maxFollowers: followers })
+              .execute()
+          } else {
+            const minFollowers = Math.min(existing.minFollowers, followers)
+            const maxFollowers = Math.max(existing.maxFollowers, followers)
+            await db
+              .updateTable('author_stats_daily')
+              .set({ minFollowers, maxFollowers })
+              .where('did', '=', did)
+              .where('day', '=', day)
+              .execute()
+          }
         }
         updated++
       }

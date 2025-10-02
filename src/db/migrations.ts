@@ -126,3 +126,39 @@ migrations['004'] = {
 
 // Backfill changes for existing databases
 // No 002 migration required for fresh local dev; 001 creates needed schema.
+
+// Daily aggregation for follower history to reduce storage
+migrations['005'] = {
+  async up(db: Kysely<unknown>) {
+    await db.schema
+      .createTable('author_stats_daily')
+      .ifNotExists()
+      .addColumn('did', 'varchar', (col) => col.notNull())
+      .addColumn('day', 'varchar', (col) => col.notNull()) // ISO date YYYY-MM-DD
+      .addColumn('minFollowers', 'integer', (col) => col.notNull())
+      .addColumn('maxFollowers', 'integer', (col) => col.notNull())
+      .execute()
+
+    // Ensure did+day uniqueness for safe upserts
+    await db.schema
+      .createIndex('author_stats_daily_did_day_unique')
+      .unique()
+      .ifNotExists()
+      .on('author_stats_daily')
+      .columns(['did', 'day'])
+      .execute()
+
+    // Helpful lookup indexes
+    await db.schema
+      .createIndex('author_stats_daily_day_idx')
+      .ifNotExists()
+      .on('author_stats_daily')
+      .column('day')
+      .execute()
+  },
+  async down(db: Kysely<unknown>) {
+    await db.schema.dropIndex('author_stats_daily_day_idx').ifExists().execute()
+    await db.schema.dropIndex('author_stats_daily_did_day_unique').ifExists().execute()
+    await db.schema.dropTable('author_stats_daily').ifExists().execute()
+  },
+}

@@ -13,7 +13,9 @@
     "build": "tsc",
     "backfill": "ts-node scripts/backfill.ts",
     "backfill:followers": "ts-node scripts/backfill-followers.ts",
-    "cleanup:fast-growing": "ts-node scripts/cleanup-fast-growing.ts"
+    "cleanup:fast-growing": "ts-node scripts/cleanup-fast-growing.ts",
+    "aggregate:followers:daily": "ts-node scripts/aggregate-followers-daily.ts",
+    "prune:followers:history": "ts-node scripts/prune-followers-history.ts"
     ,
     "migrate": "ts-node scripts/migrate.ts"
   },
