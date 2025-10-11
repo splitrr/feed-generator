@@ -68,7 +68,9 @@ export class FirehoseSubscription extends FirehoseSubscriptionBase {
         .execute()
     }
 
-    // Index likes
+    // Likes indexing disabled to save disk space (not used by feed algorithms)
+    // If you need likes in the future, uncomment the code below
+    /*
     const likesToDelete = ops.likes.deletes.map((del) => del.uri)
     const likesToCreate = ops.likes.creates.map((create) => {
       const record = create.record as LikeRecord
@@ -90,5 +92,6 @@ export class FirehoseSubscription extends FirehoseSubscriptionBase {
         .onConflict((oc) => oc.doNothing())
         .execute()
     }
+    */
   }
 }

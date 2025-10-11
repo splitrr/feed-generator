@@ -63,7 +63,14 @@ export class FeedGenerator {
 
   async start(): Promise<http.Server> {
     await migrateToLatest(this.db)
-    this.firehose.run(this.cfg.subscriptionReconnectDelay)
+    // Only run firehose subscription if endpoint is configured and valid
+    if (this.cfg.subscriptionEndpoint && this.cfg.subscriptionEndpoint.startsWith('ws')) {
+      console.log('🔥 Starting firehose subscription to:', this.cfg.subscriptionEndpoint)
+      this.firehose.run(this.cfg.subscriptionReconnectDelay)
+    } else {
+      console.log('⏭️  Skipping firehose subscription (no valid endpoint configured)')
+      console.log('   Set FEEDGEN_SUBSCRIPTION_ENDPOINT to enable (e.g., wss://bsky.network)')
+    }
     this.server = this.app.listen(this.cfg.port, this.cfg.listenhost)
     await events.once(this.server, 'listening')
     return this.server
